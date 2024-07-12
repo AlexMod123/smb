@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/img">
+        <file>NG_Module_SMB.png</file>
+    </qresource>
+</RCC>
