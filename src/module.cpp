@@ -1,4 +1,4 @@
-#include "../module.h"
+#include "module.h"
 
 auto mName = "SMB";
 auto mDescription = "Processing of server message block protocol";
@@ -15,10 +15,12 @@ void initTranslator()
 }
 
 StreamModule::StreamModule() : IModuleTCPSess(mName, mDescription, mGroup, mVersion, mIsGenerator, mIsTerminator),
-                               bitmap(":/img/NG_Module_SMB.png")
+                               bitmap(":/img/smb.png")
 {
 #ifdef _WIN32
 	h_Bitmap = QtWin::toHBITMAP(bitmap, QtWin::HBitmapPremultipliedAlpha);
+#else
+
 #endif
 }
 

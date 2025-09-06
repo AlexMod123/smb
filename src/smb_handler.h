@@ -3,13 +3,11 @@
 
 #include <QDebug>
 
-#include <map>
-#include <string>
 #include <queue>
 
 #include <QRegularExpression>
 
-#include "tcp\tcphandler.h"
+#include "tcp/tcphandler.h"
 
 #define SMB_HEADER_TYPE_REQUSET			0x00	// Client to Server
 #define SMB_HEADER_TYPE_RESPONSE		0x01	// Server to Client
@@ -20,8 +18,10 @@
 
 #define SMB_MAX_SEGMENT_LENGTH			65536
 #define MAX_SEGMENT_LENGTH				65535		// uint16_t
-#define MAX_LENGTH_BUFF_READ			131072		
-#define MAX_LENGTH_BUFF_WRITE			131072		
+#define MAX_LENGTH_BUFF_READ			131072
+#define MAX_LENGTH_BUFF_WRITE			131072
+
+class IKernel;
 
 struct SMBSegment
 {
@@ -38,11 +38,11 @@ public:
 		}
 		else
 			this->lenPayload = 0;
-
 	}
-	uint32_t lenPayload;					// длина буффера
-	uint32_t shifftPayload;					// ожидаемый сдиг данных
-	uint8_t  data[SMB_MAX_SEGMENT_LENGTH];
+
+	uint32_t lenPayload;
+	uint32_t shifftPayload;
+	uint8_t data[SMB_MAX_SEGMENT_LENGTH]{};
 };
 
 class LessThanByLen
@@ -52,54 +52,67 @@ public:
 	{
 		return lhs->shifftPayload > rhs->shifftPayload;
 	}
+	bool operator()(const SMBSegment& lhs, const SMBSegment& rhs) const
+	{
+		return lhs.shifftPayload < rhs.shifftPayload;
+	}
+	bool operator()(const SMBSegment* lhs, const SMBSegment& rhs) const
+	{
+		return lhs->shifftPayload < rhs.shifftPayload;
+	}
+	bool operator()(std::shared_ptr<SMBSegment> lhs, std::shared_ptr<SMBSegment> rhs) const
+	{
+		return lhs->shifftPayload < rhs->shifftPayload;
+	}
 };
 
-class SMB_Handler :  TCPHandler
+class SMB_Handler final : TCPHandler
 {
 public:
-	SMB_Handler(IKernel* kernel,uint32_t ip_src,uint32_t ip_dst, uint16_t port_src, uint16_t port_dst);
-	~SMB_Handler();
+	SMB_Handler(IKernel* kernel, uint32_t ip_src, uint32_t ip_dst, uint16_t port_src, uint16_t port_dst);
+	~SMB_Handler() override;
 
-	int  onRequestStream(unsigned char *payload, int payload_len, bool inc, bool push);
-	int  onReplyStream(unsigned char *payload, int payload_len, bool inc, bool push);
+	int onRequestStream(unsigned char* payload, int payload_len, bool inc, bool push) override;
+	int onReplyStream(unsigned char* payload, int payload_len, bool inc, bool push) override;
 
-	void onClose(bool haveFin);
-	void createSession();
+	void onClose(bool haveFin) override;
+	void createSession() override;
 
 	void closeFile(bool isOk);
-private:
 
+private:
 	enum class COMMAND_TYPE { READ, WRITE, CLOSE, DATA, UNK };
+
 	enum class SESSION_TYPE { READ, WRITE, UNK };
 
-	SESSION_TYPE sessionType{ SESSION_TYPE::UNK };
+	SESSION_TYPE sessionType{SESSION_TYPE::UNK};
 
-	unsigned char currentBuffer[SMB_MAX_SEGMENT_LENGTH];
-	int lenCurrentBuff{ 0 };
+	unsigned char currentBuffer[SMB_MAX_SEGMENT_LENGTH]{};
+	int lenCurrentBuff{0};
 
-	unsigned char bufferREAD[MAX_LENGTH_BUFF_READ];
-	int lenBuffRead{ 0 };
+	unsigned char bufferREAD[MAX_LENGTH_BUFF_READ]{};
+	int lenBuffRead{0};
 
-	unsigned char bufferWRITE[MAX_LENGTH_BUFF_WRITE];
-	int lenBuffWrite{ 0 };
-	uint64_t currentOffsetLen{ 0 };								// смещение в файле от прошлого пакета по байтам (которое пришло в пакете)
-	uint64_t offsetLenData{ 0 };								// смещение в файле от прошлого пакета по байтам (которое должно быть по факту)
-	uint32_t sessionTreeId{ 0 };									// идентификатор дерева сессии
-	bool m_req_inc, m_rep_inc;									// флаг битого (с пропусками) запроса/ответа
+	unsigned char bufferWRITE[MAX_LENGTH_BUFF_WRITE]{};
+	int lenBuffWrite{0};
+	uint64_t currentOffsetLen{0};
+	uint64_t offsetLenData{0};
+	uint32_t sessionTreeId{0};
+	bool m_req_inc, m_rep_inc;
 
-	int  m_file_handle;											// хэндл текущего файла                                                        
-	bool isOpenSession{ false };
-	
+	int m_file_handle;
+	bool isOpenSession{false};
+
 	uint32_t ip_src, ip_dst;
 
-	std::priority_queue<SMBSegment*, std::deque<SMBSegment*>, LessThanByLen> m_smbQueue;
+	std::priority_queue<std::shared_ptr<SMBSegment>, std::deque<std::shared_ptr<SMBSegment>>, LessThanByLen> m_smbQueue;
 
 	int procSMB(unsigned char* payload, int payload_len);
 	COMMAND_TYPE parseSMBHeader(unsigned char* payload, int payload_len);
 	void writeSession(unsigned char* payload, int payload_len);
-	
+
 	void flushBuffer();
-	void flushQueue(bool & state);
+	void flushQueue(bool& state);
 
 	void parseBufferRead();
 	void parseBufferWrite();

@@ -3,40 +3,34 @@
 
 #ifdef _WIN32
 #include <QtWinExtras>
+#else
+
 #endif
 
-#include <cstdio>
 
-#include <cstring>
-#include <map>
 
 #include <QObject>
-#include <QMap>
-#include <QString>
-#include <QBitmap>
-#include <QApplication>
+#include "tcp/imoduleTCPSess.h"
+#include "smb_handler.h"
 
-#include "../../../include/tcp/imoduleTCPSess.h"
-#include "../smb_handler.h"
-
-class StreamModule : IModuleTCPSess
+class StreamModule final : IModuleTCPSess
 {
 public:
 	StreamModule();
 	~StreamModule() override;
 
-	virtual void createModule();
-	virtual void showForm();
+	void createModule() override;
+	void showForm() override;
 
-	virtual bool initResources();
-	virtual bool freeResources();
+	bool initResources() override;
+	bool freeResources() override;
 
-	virtual bool processData(unsigned char* d, unsigned int l);
-	virtual bool processTimeout();
-	virtual bool processNoData();
+	bool processData(unsigned char* d, unsigned int l) override;
+	bool processTimeout() override;
+	bool processNoData() override;
 
-	virtual bool setParameter(const char* _name, const char* _value, int _type);
-	virtual void tellParams();
+	bool setParameter(const char* _name, const char* _value, int _type) override;
+	void tellParams() override;
 
 protected:
 	QPixmap bitmap;
